@@ -1,5 +1,5 @@
 project:
-  name: quickstart-salesforce-connect-appsync-rds-postgresql
+  name: cfn-ps-salesforce-connect-appsync-rds-postgresql
   owner: quickstart-eng@amazon.com
   template: templates/salesforce-connect-appsync-rds-postgresql-new-vpc.template.yaml
   parameters:
