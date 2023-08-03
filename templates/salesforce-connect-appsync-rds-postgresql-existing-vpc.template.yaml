@@ -1,0 +1,380 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creates resources necessary for GraphQL RDS integration - with existing VPC (qs-1tuqqm230).
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Network configuration
+        Parameters:
+          - VPCID
+          - PrivateSubnet1ID
+          - PrivateSubnet2ID
+          - AvailabilityZones
+      - Label:
+          default: Deployment option
+        Parameters:
+          - RDSClusterMode
+      - Label:
+          default: RDS standard-mode configuration
+        Parameters:
+          - DBInstanceClass
+      - Label:
+          default: RDS serverless-mode configuration
+        Parameters:
+          - AutoPauseCluster
+          - SecondsUntilAutoPause
+          - MinCapacity
+          - MaxCapacity
+      - Label:
+          default: RDS database configuration
+        Parameters:
+          - DatabaseUserName
+          - DatabaseName
+          - DatabasePort
+      - Label:
+          default: AppSync
+        Parameters:
+          - AppSyncAuthenticationType
+          - GraphQLResolverName
+          - GraphQLSchemaLocation
+          - GraphQLSchemaName
+          - RDSSchemaLocation
+          - RDSSchemaName
+          - MyOrderParameterName
+          - MyOrderItemParameterName
+          - MyProductParameterName
+      - Label:
+          default: AWS Partner Solution configuration
+        Parameters:
+          - QSS3BucketName
+          - QSS3KeyPrefix
+          - QSS3BucketRegion
+    ParameterLabels:
+      VPCID:
+        default: VPC ID
+      PrivateSubnet1ID:
+        default: Private subnet 1 ID
+      PrivateSubnet2ID:
+        default: Private subnet 2 ID
+      AvailabilityZones:
+        default: Availability Zones
+      RDSClusterMode:
+        default: RDS cluster mode
+      DBInstanceClass:
+        default: DB instance class
+      AutoPauseCluster:
+        default: Auto-pause cluster
+      SecondsUntilAutoPause:
+        default: Seconds until auto pause
+      MinCapacity:
+        default: Minimum capacity
+      MaxCapacity:
+        default: Maximum capacity
+      DatabaseUserName:
+        default: Database user name
+      DatabaseName:
+        default: Database name
+      DatabasePort:
+        default: Database port
+      MyOrderParameterName:
+        default: My order parameter name
+      MyOrderItemParameterName:
+        default: My order item parameter name
+      MyProductParameterName:
+        default: My product parameter name
+      AppSyncAuthenticationType:
+        default: AppSync authentication type
+      GraphQLResolverName:
+        default: GraphQL resolver name
+      GraphQLSchemaLocation:
+        default: GraphQL schema location
+      GraphQLSchemaName:
+        default: GraphQL schema name
+      RDSSchemaLocation:
+        default: RDS schema location
+      RDSSchemaName:
+        default: RDS schema name
+      QSS3BucketName:
+        default: Partner Solution S3 bucket name
+      QSS3KeyPrefix:
+        default: Partner Solution S3 key prefix
+      QSS3BucketRegion:
+        default: Partner Solution S3 bucket Region
+
+Parameters:
+  RDSClusterMode:
+    Type: String
+    AllowedValues:
+      - Serverless
+      - Standard
+    Default: Serverless
+    Description: >
+      Choose "Standard" to deploy a standard configuration of Amazon Aurora instead of Amazon Aurora Serverless v.1.
+
+  AutoPauseCluster:
+    Type: String
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'true'
+    Description: Choose "false" to disallow automatic pause of an idle, serverless Aurora DB cluster. With auto pause, a serverless cluster scales capacity to 0 Aurora capacity units (ACUs) when idle (no connections).
+
+  SecondsUntilAutoPause:
+    Type: Number
+    AllowedValues:
+      - 300
+      - 600
+      - 1200
+      - 3600
+      - 14400
+      - 28800
+      - 86400
+    Default: 300
+    Description: >
+      Enter the time, in seconds, before an idle, serverless Aurora DB cluster scales capacity to 0 ACUs (auto-pauses). Valid entries are 300 (five minutes), 600 (10 minutes), 1200 (20 minutes), 3600 (one hour), 14400 (four hours), 28800 (eight hours), and 86400 (24 hours).
+
+  MinCapacity:
+    Type: Number
+    AllowedValues:
+      - 2
+      - 4
+      - 8
+      - 16
+      - 32
+      - 64
+      - 192
+      - 384
+    Default: 2
+    Description: >
+      Enter the minimum capacity for a serverless Aurora DB cluster.
+
+  MaxCapacity:
+    Type: Number
+    AllowedValues:
+      - 2
+      - 4
+      - 8
+      - 16
+      - 32
+      - 64
+      - 192
+      - 384
+    Default: 16
+    Description: >
+      Enter the maximum capacity for a serverless Aurora DB cluster. Must be greater than or equal to minimum capacity.
+
+  VPCID:
+    Type: AWS::EC2::VPC::Id
+    Description: ID of your existing VPC (for example, "vpc-0343606e").
+  PrivateSubnet1ID:
+    Type: AWS::EC2::Subnet::Id
+    Description: >-
+      ID of the private subnet in Availability Zone 1 of your existing VPC.
+      (example: subnet-fe9a8b32).
+  PrivateSubnet2ID:
+    Type: AWS::EC2::Subnet::Id
+    Description: >-
+      ID of the private subnet in Availability Zone 2 of your existing VPC.
+      (example: subnet-be8b01ea).
+  AvailabilityZones:
+    Description: Choose two Availability Zones to use for this deployment.
+    Type: List<AWS::EC2::AvailabilityZone::Name>
+
+  QSS3BucketName:
+    AllowedPattern: ^[0-9a-z]+([0-9a-z-\.]*[0-9a-z])*$
+    ConstraintDescription: >-
+      The S3 bucket name can include numbers, lowercase letters,
+      and hyphens (-), but it cannot start or end with a hyphen.
+    Default: aws-ia-us-east-1
+    Description: >-
+      Name of the S3 bucket for your copy of the deployment assets. Keep the default
+      name unless you are customizing the template. Changing the name updates code
+      references to point to a new location.
+    MinLength: 3
+    MaxLength: 63
+    Type: String
+  QSS3BucketRegion:
+    Default: us-east-1
+    Description: >-
+      AWS Region where the S3 bucket (QSS3BucketName) is hosted. Keep
+      the default Region unless you are customizing the template. Changing the Region
+      updates code references to point to a new location. When using your own bucket,
+      specify the Region.
+    Type: String
+  QSS3KeyPrefix:
+    AllowedPattern: ^([0-9a-zA-Z!-_\.\*'\(\)/]+/)*$
+    ConstraintDescription: >-
+      The S3 key prefix can include numbers, lowercase letters, uppercase letters,
+      hyphens (-), underscores (_), periods (.), asterisks (*), single quotes ('),
+      open parenthesis ((), close parenthesis ()), and forward slashes (/). End the
+      prefix with a forward slash.
+    Default: cfn-ps-salesforce-connect-appsync-rds-postgresql/
+    Description: >-
+      S3 key prefix that is used to simulate a folder for your copy of the
+      deployment assets. Keep the default prefix unless you are customizing
+      the template. Changing the prefix updates code references to point to
+      a new location.
+    Type: String
+
+  DBInstanceClass:
+    Description: RDS instance class.
+    Type: String
+    Default: db.t3.medium
+    AllowedValues:
+      - db.r5.large
+      - db.r5.xlarge
+      - db.r5.2xlarge
+      - db.r5.4xlarge
+      - db.r5.8xlarge
+      - db.t3.medium
+      - db.t3.large
+
+  DatabaseUserName:
+    Description: Database user name.
+    Type: String
+    Default: dbadmin
+  DatabaseName:
+    Description: Database name.
+    Type: String
+    Default: graphqlrds
+  DatabasePort:
+    Type: String
+    Default: 5432
+
+  MyOrderParameterName:
+    Description: My order parameter name.
+    Type: String
+    Default: "/appsync/typemetadata/Graphqlsample_MyOrder"
+  MyOrderItemParameterName:
+    Description: My order item parameter name.
+    Type: String
+    Default: "/appsync/typemetadata/Graphqlsample_MyOrderItem"
+  MyProductParameterName:
+    Description: My product parameter name.
+    Type: String
+    Default: "/appsync/typemetadata/Graphqlsample_MyProduct"
+
+  AppSyncAuthenticationType:
+    Description: Choose "AWS_IAM" to authenticate interactions with AWS AppSync using AWS IAM permissions instead of API keys.
+    Type: String
+    Default: API_KEY
+    AllowedValues:
+      - AWS_IAM
+      - API_KEY
+
+  GraphQLResolverName:
+    Description: Resolver name.
+    Type: String
+    Default: graphql.resolvers.sql-1.0.0.jar
+
+  GraphQLSchemaLocation:
+    Description: Enter the location of GraphQL schema.
+    Type: String
+
+  GraphQLSchemaName:
+    Description: GraphQL schema name.
+    Type: String
+
+  RDSSchemaLocation:
+    Description: Enter the location of RDS schema.
+    Type: String
+
+  RDSSchemaName:
+    Description: RDS schema name.
+    Type: String
+
+
+Conditions:
+  UsingDefaultBucket: !Equals [!Ref QSS3BucketName, 'aws-ia-us-east-1']
+
+Resources:
+  ConfigurationStack:
+    Type: 'AWS::CloudFormation::Stack'
+    Properties:
+      TemplateURL:
+        !Sub
+        - https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/salesforce-connect-appsync-rds-postgresql-configuration.template.yaml
+        - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+          S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
+      Parameters:
+        MyOrderParameterName: !Ref MyOrderParameterName
+        MyOrderItemParameterName: !Ref MyOrderItemParameterName
+        MyProductParameterName: !Ref MyProductParameterName
+
+  IAMSecurityGroupStack:
+    Type: 'AWS::CloudFormation::Stack'
+    Properties:
+      TemplateURL:
+        !Sub
+        - https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/salesforce-connect-appsync-rds-postgresql-iam-security-groups.template.yaml
+        - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+          S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
+      Parameters:
+        VPCID: !Ref VPCID
+        PrivateSubnet1ID: !Ref PrivateSubnet1ID
+        PrivateSubnet2ID: !Ref PrivateSubnet2ID
+        ArtifactsBucket: !GetAtt ConfigurationStack.Outputs.ArtifactsBucket
+        MyOrderParameter: !GetAtt ConfigurationStack.Outputs.MyOrderParameter
+        MyOrderItemParameter: !GetAtt ConfigurationStack.Outputs.MyOrderItemParameter
+        MyProductParameter: !GetAtt ConfigurationStack.Outputs.MyProductParameter
+        RDSSecretsKey: !GetAtt ConfigurationStack.Outputs.RDSSecretsKey
+        RDSSecret: !GetAtt ConfigurationStack.Outputs.RDSSecret
+        QSS3BucketName: !Ref QSS3BucketName
+        QSS3KeyPrefix: !Ref QSS3KeyPrefix
+
+  RDSCodeBuildStack:
+    Type: 'AWS::CloudFormation::Stack'
+    Properties:
+      TemplateURL:
+        !Sub
+        - https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/salesforce-connect-appsync-rds-postgresql-rds-codebuild.template.yaml
+        - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+          S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
+      Parameters:
+        RDSClusterMode: !Ref RDSClusterMode
+        AutoPauseCluster: !Ref AutoPauseCluster
+        SecondsUntilAutoPause: !Ref SecondsUntilAutoPause
+        MinCapacity: !Ref MinCapacity
+        MaxCapacity: !Ref MaxCapacity
+        VPCID: !Ref VPCID
+        PrivateSubnet1ID: !Ref PrivateSubnet1ID
+        PrivateSubnet2ID: !Ref PrivateSubnet2ID
+        AvailabilityZones: !Join
+          - ','
+          - !Ref AvailabilityZones
+        ArtifactsBucket: !GetAtt ConfigurationStack.Outputs.ArtifactsBucket
+        RDSSecret: !GetAtt ConfigurationStack.Outputs.RDSSecret
+        RDSResolverLambdaRole: !GetAtt IAMSecurityGroupStack.Outputs.RDSResolverLambdaRole
+        CodeBuildServiceRole: !GetAtt IAMSecurityGroupStack.Outputs.CodeBuildServiceRole
+        LambdaSecurityGroup: !GetAtt IAMSecurityGroupStack.Outputs.LambdaSecurityGroup
+        CodeBuildSecurityGroup: !GetAtt IAMSecurityGroupStack.Outputs.CodeBuildSecurityGroup
+        RDSSecurityGroup: !GetAtt IAMSecurityGroupStack.Outputs.RDSSecurityGroup
+        DBInstanceClass: !Ref DBInstanceClass
+        GraphQLResolverName: !Ref GraphQLResolverName
+        GraphQLSchemaLocation: !Ref GraphQLSchemaLocation
+        GraphQLSchemaName: !Ref GraphQLSchemaName
+        RDSSchemaLocation: !Ref RDSSchemaLocation
+        RDSSchemaName: !Ref RDSSchemaName
+        DatabaseName: !Ref DatabaseName
+        DatabaseUserName: !Ref DatabaseUserName
+        DatabasePort: !Ref DatabasePort
+        QSS3BucketName: !Ref QSS3BucketName
+        QSS3KeyPrefix: !Ref QSS3KeyPrefix
+
+  AppSyncStack:
+    Type: 'AWS::CloudFormation::Stack'
+    Properties:
+      TemplateURL:
+        !Sub
+        - https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/salesforce-connect-appsync-rds-postgresql-appsync.template.yaml
+        - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+          S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
+      Parameters:
+        ArtifactsBucket: !GetAtt ConfigurationStack.Outputs.ArtifactsBucket
+        GraphQLSchemaName: !Ref GraphQLSchemaName
+        AppSyncLambdaRole: !GetAtt RDSCodeBuildStack.Outputs.AppSyncLambdaRole
+        AppSyncServiceRole: !GetAtt IAMSecurityGroupStack.Outputs.AppSyncServiceRole
+        AppSyncAuthenticationType: !Ref AppSyncAuthenticationType
+        RDSResolverLambdaVersion: !GetAtt RDSCodeBuildStack.Outputs.RDSResolverLambdaVersion
