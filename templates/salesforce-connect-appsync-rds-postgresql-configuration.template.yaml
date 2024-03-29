@@ -60,7 +60,7 @@ Resources:
         Statement:
           - Action:
               - "s3:*"
-            Effect: "Deny"
+            Effect: Allow
             Principal: "*"
             Resource:
               - !GetAtt ArtifactsBucket.Arn
